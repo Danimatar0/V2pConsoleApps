@@ -1,107 +1,62 @@
 ﻿using AccidentDetectionWorker.Models.Common;
+using AccidentDetectionWorker.Models.RedisModels.RedisDatabase;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 using System;
-using static ServiceStack.Diagnostics;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using ILogger = Serilog.ILogger;
 
 namespace AccidentDetectionWorker.Business.Redis
 {
     public class RedisBusiness : IRedisBusiness
     {
-        private ConnectionMultiplexer _redis;
         private readonly ILogger<RedisBusiness> _logger;
-        private readonly GlobalConfig _globalConfig;
+        private readonly IOptions<GlobalConfig> _globalConfig;
+        //private readonly IRedisDatabase _db;
+        private readonly GlobalConfig _config;
+        private static ConfigurationOptions _configurationOptions;
+
         public RedisBusiness(ILogger<RedisBusiness> logger, IOptions<GlobalConfig> options)
         {
-            _globalConfig = options.Value;
+            _globalConfig = options;
+            _config = _globalConfig.Value;
             _logger = logger;
+            _configurationOptions = GetConfigurationOptions(_config);
         }
 
-        public IDatabase GetRedisDatabase()
+        private static ConfigurationOptions GetConfigurationOptions(GlobalConfig config)
         {
-            if (_redis == null || !_redis.IsConnected)
+            return new ConfigurationOptions
             {
-                Connect();
-            }
-            return _redis.GetDatabase();
-        }
-        public void Connect()
-        {
-
-            while (true)
-            {
-                try
-                {
-                    if (_redis == null)
-                    {
-                        _logger.LogInformation($"Initiating connection to Redis server");
-
-                        //Configuration options for redis connection establishment
-                        ConfigurationOptions configurationOptions = new ConfigurationOptions
-                        {
-                            AbortOnConnectFail = _globalConfig.RedisConfig.AbortOnFail,
-                            ConnectRetry = _globalConfig.RedisConfig.RetryCount,
-                            ClientName = _globalConfig.RedisConfig.ConnectionName,
-                            ConnectTimeout = _globalConfig.RedisConfig.ConnectionTimeout,
-                            DefaultDatabase = _globalConfig.RedisConfig.Database,
-                            KeepAlive = _globalConfig.RedisConfig.KeepAlive,
-                            Password = _globalConfig.RedisConfig.Password,
-                            EndPoints = new EndPointCollection()
+                AbortOnConnectFail = config.RedisConfig.AbortOnFail,
+                ConnectRetry = config.RedisConfig.RetryCount,
+                ClientName = config.RedisConfig.ConnectionName,
+                ConnectTimeout = config.RedisConfig.ConnectionTimeout,
+                DefaultDatabase = config.RedisConfig.Database,
+                KeepAlive = config.RedisConfig.KeepAlive,
+                Password = config.RedisConfig.Password,
+                EndPoints = new EndPointCollection()
                             {
-                                _globalConfig.RedisConfig.Host
+                                config.RedisConfig.Host
                             }
-                        };
-
-                        //Connecting to redis
-                        _redis = ConnectionMultiplexer.Connect(configurationOptions);
-                        if (_redis.IsConnected)
-                        {
-                            _logger.LogInformation($"Connected to Redis server: {_globalConfig.RedisConfig.Host}:{_globalConfig.RedisConfig.Port}");
-                            break;
-                        }
-                    }
-                }
-                catch (RedisConnectionException e)
-                {
-                    _logger.LogError("Could not connect to Redis server: " + e.Message + " after " + _globalConfig.RedisConfig.RetryCount + " retries");
-                }
-                catch (RedisTimeoutException e)
-                {
-                    _logger.LogError("Timed out while trying to connect to Redis server: " + e.Message);
-                }
-            }
+            };
         }
-
-        public void Disconnect()
-        {
-            try
-            {
-                _redis.Close();
-                _redis.Dispose();
-            }
-            catch (Exception e)
-            {
-                _logger.LogError("Could not disconnect from Redis server: " + e.Message);
-            }
-        }
-
         public void StringSet(string key, string value)
         {
             try
             {
-                if (_redis == null || !_redis.IsConnected)
-                {
-                    Connect();
-                }
-                IDatabase db = _redis.GetDatabase();
+                IDatabase db = GetRedisDatabase();
+
                 bool isSet = db.StringSet(key, value);
 
                 if (!isSet)
                 {
                     _logger.LogError($"Unable to set value {value} for key {key}");
                 }
+                Disconnect(db);
             }
             catch (Exception e)
             {
@@ -113,12 +68,11 @@ namespace AccidentDetectionWorker.Business.Redis
         {
             try
             {
-                if (_redis == null || !_redis.IsConnected)
-                {
-                    Connect();
-                }
-                IDatabase db = _redis.GetDatabase();
-                return db.StringGet(key);
+                IDatabase db = GetRedisDatabase();
+                string str = db.StringGet(key);
+
+                Disconnect(db);
+                return str;
             }
             catch (Exception e)
             {
@@ -192,24 +146,6 @@ namespace AccidentDetectionWorker.Business.Redis
             throw new NotImplementedException();
         }
 
-        public ISubscriber Subscribe()
-        {
-            try
-            {
-                if (_redis == null || !_redis.IsConnected)
-                {
-                    Connect();
-                }
-                ISubscriber sub = _redis.GetSubscriber();
-                return sub;
-            }
-            catch (Exception e)
-            {
-                _logger.LogError("Could not get value from Redis server: " + e.Message);
-                return null;
-            }
-
-        }
 
         public void SubscribeToChannels(List<string> channels)
         {
@@ -230,12 +166,12 @@ namespace AccidentDetectionWorker.Business.Redis
         {
             try
             {
-                if (_redis == null || !_redis.IsConnected)
-                {
-                    Connect();
-                }
-                IDatabase db = _redis.GetDatabase();
-                return db.HashScan(key, pattern, cursor: cursor, pageSize: _globalConfig.RedisConfig.ScanPageSize);
+                IDatabase db = GetRedisDatabase();
+                IEnumerable<HashEntry> entries = db.HashScan(key, pattern, cursor: cursor, pageSize: _config.RedisConfig.ScanPageSize);
+
+                //Disconnect(db);
+
+                return entries;
             }
             catch (Exception e)
             {
@@ -248,12 +184,11 @@ namespace AccidentDetectionWorker.Business.Redis
         {
             try
             {
-                if (_redis == null || !_redis.IsConnected)
-                {
-                    Connect();
-                }
-                IDatabase db = _redis.GetDatabase();
-                return db.ListGetByIndex(key, index);
+                IDatabase db = GetRedisDatabase();
+                RedisValue value = db.ListGetByIndex(key, index);
+
+                //Disconnect(db);
+                return value;
             }
             catch (Exception e)
             {
@@ -266,18 +201,14 @@ namespace AccidentDetectionWorker.Business.Redis
         {
             try
             {
-                if (_redis == null || !_redis.IsConnected)
-                {
-                    Connect();
-                }
-                IDatabase db = _redis.GetDatabase();
+                IDatabase db = GetRedisDatabase();
                 var rand = new Random();
 
                 for (int i = 0; i < n; i++)
                 {
-                    //var fieldName = $"jw30X:{Guid.NewGuid().ToString().Replace("-", "")}";
+                    var fieldName = $"jw30X:{Guid.NewGuid().ToString().Replace("-", "")}";
                     var speed = rand.Next(10, 120);
-                    var fieldName = $"HXbW5:{Guid.NewGuid().ToString().Replace("-", "")}";
+                    //var fieldName = $"HXbW5:{Guid.NewGuid().ToString().Replace("-", "")}";
                     //var x = rand.Next(28, 32);
                     //var y = rand.Next(29, 33);
                     //var z = rand.Next(31, 33);
@@ -287,11 +218,58 @@ namespace AccidentDetectionWorker.Business.Redis
                     var value = $"{x},{y},{z}:{speed}";
                     db.HashSetAsync(key, fieldName, value);
                 }
+                Disconnect(db);
+
             }
             catch (Exception e)
             {
                 _logger.LogError("Could not get value from Redis server: " + e.Message);
             }
+        }
+
+        public IEnumerable<object> GetList(string key)
+        {
+
+            try
+            {
+                List<object> enumerable = new List<object>();
+                IDatabase db = GetRedisDatabase();
+
+                if (db.IsConnected(key))
+                {
+                    RedisValue[] redisValues = db.ListRange(key);
+
+                    foreach (RedisValue redisValue in redisValues)
+                    {
+                        enumerable.Add((object)redisValue);
+                    }
+
+                }
+                Disconnect(db);
+                return enumerable;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError("Could not get value from Redis server: " + e.Message);
+                return new List<object>();
+            }
+        }
+        public void Disconnect(IDatabase db)
+        {
+            db.Multiplexer.Close();
+            db.Multiplexer.Dispose();
+        }
+
+        public IDatabase GetRedisDatabase()
+        {
+            return GetRedisConnection().GetDatabase();
+            //_logger.LogInformation($"Connection Established : {multiplexer.IsConnected}");
+            //return multiplexer.GetDatabase();
+        }
+
+        private ConnectionMultiplexer GetRedisConnection()
+        {
+            return ConnectionMultiplexer.Connect(_configurationOptions);
         }
     }
 }

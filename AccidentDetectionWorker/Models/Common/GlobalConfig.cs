@@ -50,6 +50,9 @@ namespace AccidentDetectionWorker.Models.Common
         public string DevicesCoordinates { get; set; }
         public string IntersectionIds { get; set; }
         public int RunJobEvery { get; set; }
+        public int CollisionThreshold { get; set; }
+        public float TimeSteps { get; set; }
+        public int BatchSize { get; set; }
     }
 
 }

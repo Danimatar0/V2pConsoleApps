@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 //using System.Device.Location;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 namespace AccidentDetectionWorker
@@ -80,5 +81,31 @@ namespace AccidentDetectionWorker
             }
             return speed;
         }
+
+
+        public static double Magnitude(Vector3 v)
+        {
+            return Math.Sqrt(v.X * v.X + v.Y * v.Y + v.Z * v.Z);
+        }
+
+        public static Vector3 Normalize(Vector3 v)
+        {
+            double magnitude = Magnitude(v);
+            if (magnitude != 0)
+            {
+                v.X /= (float)magnitude;
+                v.Y /= (float)magnitude;
+                v.Z /= (float)magnitude;
+            }
+            return v;
+        }
+        public static double Distance(Vector3 v1, Vector3 v2)
+        {
+            double dx = v1.X - v2.X;
+            double dy = v1.Y - v2.Y;
+            double dz = v1.Z - v2.Z;
+            return Math.Sqrt(dx * dx + dy * dy + dz * dz);
+        }
+
     }
 }
