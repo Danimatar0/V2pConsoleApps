@@ -9,12 +9,12 @@ namespace AccidentDetectionWorker.Models.RedisModels
     public class Device
     {
         public string Imei { get; set; }
-        public double Speed { get; set; }
+        public float Speed { get; set; }
         public List<DeviceCoordinate> Coordinates { get; set; } = new List<DeviceCoordinate>();
         public BaseCoordinate Segment { get; set; }
         public string IdIntersection { get; set; }
 
-        public Device(string imei, double speed, List<DeviceCoordinate> coordinates, BaseCoordinate segment, string idIntersection)
+        public Device(string imei, float speed, List<DeviceCoordinate> coordinates, BaseCoordinate segment, string idIntersection)
         {
             Imei = imei;
             Speed = speed;
@@ -26,9 +26,9 @@ namespace AccidentDetectionWorker.Models.RedisModels
 
     public class BaseCoordinate
     {
-        public double Latitude { get; set; }
-        public double Longitude { get; set; }
-        public double Altitude { get; set; }
+        public float X { get; set; }
+        public float Y { get; set; }
+        public float Z { get; set; }
     }
     public class DeviceCoordinate : BaseCoordinate
     {
@@ -42,6 +42,21 @@ namespace AccidentDetectionWorker.Models.RedisModels
     {
         public string Imei { get; set; }
         public string IdIntersection { get; set; }
-        public Tuple<double, double, double> Segment { get; set; }
+        public BaseCoordinate Segment { get; set; }
+        public float LastSpeed { get; set; }
+
+        public static DeviceSegment FromKeyValuePair(KeyValuePair<string, string> pair)
+        {
+            DeviceSegment segment = new DeviceSegment();
+            segment.IdIntersection = pair.Key.Split(":")[0];
+            segment.Imei = pair.Key.Split(":")[1];
+
+            var currentDeviceCoords = pair.Value.Split(":")[0].Split(",");
+
+            segment.Segment = new BaseCoordinate { X = float.Parse(currentDeviceCoords[0] ?? "0"), Y = float.Parse(currentDeviceCoords[1] ?? "0"), Z = float.Parse(currentDeviceCoords[2] ?? "0") };
+            segment.LastSpeed = float.Parse(pair.Value.Split(":")[1] ?? "0");
+
+            return segment;
+        }
     }
 }

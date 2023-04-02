@@ -14,13 +14,13 @@ namespace AccidentDetectionWorker
         {
             double R = 6371000.0; // radius of the Earth in meters
 
-            // Convert latitudes and longitudes to radians
-            double lat1 = coord1.Latitude * Math.PI / 180.0;
-            double lon1 = coord1.Longitude * Math.PI / 180.0;
-            double lat2 = coord2.Latitude * Math.PI / 180.0;
-            double lon2 = coord2.Longitude * Math.PI / 180.0;
+            // Convert latitudes and Ys to radians
+            double lat1 = coord1.X * Math.PI / 180.0;
+            double lon1 = coord1.Y * Math.PI / 180.0;
+            double lat2 = coord2.X * Math.PI / 180.0;
+            double lon2 = coord2.Y * Math.PI / 180.0;
 
-            // Calculate differences in latitude and longitude
+            // Calculate differences in X and Y
             double dLat = lat2 - lat1;
             double dLon = lon2 - lon1;
 
@@ -29,19 +29,19 @@ namespace AccidentDetectionWorker
             double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
             double d = R * c;
 
-            // Calculate altitude difference
-            double altitudeDiff = coord2.Altitude - coord1.Altitude;
+            // Calculate Z difference
+            double ZDiff = coord2.Z - coord1.Z;
 
             // Calculate total distance using distance formula
-            double totalDistance = Math.Sqrt(Math.Pow(d, 2) + Math.Pow(altitudeDiff, 2));
+            double totalDistance = Math.Sqrt(Math.Pow(d, 2) + Math.Pow(ZDiff, 2));
 
             return totalDistance;
         }
 
         public static double GetDistance(DeviceCoordinate coord1, DeviceCoordinate coord2)
         {
-            //GeoCoordinate geo1 = new GeoCoordinate(coord1.Latitude, coord1.Longitude,coord1.Altitude);
-            //GeoCoordinate geo2 = new GeoCoordinate(coord2.Latitude, coord2.Longitude,coord2.Altitude);
+            //GeoCoordinate geo1 = new GeoCoordinate(coord1.X, coord1.Y,coord1.Z);
+            //GeoCoordinate geo2 = new GeoCoordinate(coord2.X, coord2.Y,coord2.Z);
             //return geo1.GetDistanceTo(geo2);
             return 0;
         }
@@ -51,15 +51,15 @@ namespace AccidentDetectionWorker
             // Example array of DeviceCoordinate objects
             DeviceCoordinate[] coords = new DeviceCoordinate[] {
                 new DeviceCoordinate {
-                    Latitude = 37.7749,
-                    Longitude = -122.4194,
-                    Altitude = 0.0,
+                    X = 37.7749F,
+                    Y = -122.4194F,
+                    Z = 0.0F,
                     Timestamp = DateTime.Parse("2021-08-01 10:00:00")
                 },
                 new DeviceCoordinate {
-                    Latitude = 37.7752,
-                    Longitude = -122.4186,
-                    Altitude = 10.0,
+                    X = 37.7752F,
+                    Y = -122.4186F,
+                    Z = 10.0F,
                     Timestamp = DateTime.Parse("2021-08-01 10:01:00")
                 }
             };

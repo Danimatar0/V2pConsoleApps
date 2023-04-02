@@ -40,67 +40,30 @@ namespace AccidentDetectionWorker.Business.AccidentDetection
 
             // Get the devices for the current intersection
             List<KeyValuePair<string, string>> devices = new List<KeyValuePair<string, string>>();
-            List<KeyValuePair<string, string>> processed = new List<KeyValuePair<string, string>>();
-
 
             devices = GetDevices(db, intersectionId);
 
+            //_logger.LogInformation($"Found {devices.Count} in intersection {intersectionId}");
+            //Populate all possible combinations, this list will be iterated over to check for any possible collision
 
-
+            var collisions = new List<CollisionAtDistanceAfterTime> ();
             if (devices.Count > 0)
             {
-                //Dividing devices list into multiple batches in order to optimize the processing
-                //var batches = devices.Batch(_globalConfig.Constants.BatchSize);
+                List<CollisionCheckCombination> combinations = CollisionHelper.PopulateCollisionCombinations(devices);
 
-                // Create a list to hold the collisions
-                var collisions = new List<KeyValuePair<string, string>>();
-
-                //foreach (var device in devices)
-                //{
-                //    CollisionHelper.CheckFor2DCollisionsV1(_logger, devices, device, collisions);
-                //}
-
-                for (int i = 0; i < devices.Count - 1; i++)
+                if (combinations != null && combinations.Count > 0)
                 {
-                    var d1 = devices[i];
-                    for (int j = i + 1; j < devices.Count; j++)
+                    foreach (CollisionCheckCombination comb in combinations)
                     {
-                        var d2 = devices[j];
-
-                        Console.WriteLine("Adding new entry:" + $"{d1.Key.Split(":")[1]},{d2.Key.Split(":")[1]}");
-
-
-                        //if (processed.Contains($"{d1.Key.Split(":")[1]},{d2.Key.Split(":")[1]}") || processed.Contains($"{d2.Key.Split(":")[1]},{d1.Key.Split(":")[1]}"))
-                        //{
-                        //    _logger.LogWarning("These imeis has been already checked.");
-                        //}
-                        //else
-                        //{
-                        CollisionHelper.CheckFor2DCollisionsV1Nested(_logger, d1, d2, collisions);
-
-                        //}
+                        CollisionHelper.CheckFor2DCollisionsV1Nested(_globalConfig,_logger, comb.D1, comb.D2, collisions);
                     }
                 }
             }
-            //Parallel.ForEach(batches, batch =>
-            //{
-            //    // simulate processing the batch
-            //    Console.WriteLine($"Processing batch [{string.Join(",", batch)}] on thread {Task.CurrentId}");
-            //    CollisionHelper.CheckFor2DCollisionsV1Batch(_logger, batches.FirstOrDefault().ToList(), batch.ToList().FirstOrDefault(), collisions);
-            //});
 
-            //Console.WriteLine("Done processing batches");
-            //foreach (var batch in batches)
-            //{
-            //    CheckFor2DCollisionsV1(batches, batch, collisions);
-            //}
-            ////Parallel.ForEach(batches, (d1) =>
-            ////{
-            ////    CheckFor2DCollisionsV1(batches, d1, collisions);
-            ////});
+            _logger.LogWarning($"Detected {collisions.Count} collision(s) in intersection {intersectionId}");
+
+            ///Here I will be propagating the results to MQTT BROKER -> Channel = tracking/intersectionId
         }
-
-        //CheckForCollisions(devices,collisions);
 
         public IEnumerable<string> GetIntersectionsFromRedis()
         {

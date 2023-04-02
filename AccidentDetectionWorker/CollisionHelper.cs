@@ -1,4 +1,6 @@
-﻿using System;
+﻿using AccidentDetectionWorker.Models.Common;
+using AccidentDetectionWorker.Models.RedisModels;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -9,43 +11,28 @@ namespace AccidentDetectionWorker
 {
     public static class CollisionHelper
     {
-        public static void CheckFor2DCollisionsV1Nested(ILogger _logger, KeyValuePair<string, string> d1, KeyValuePair<string, string> d2, List<KeyValuePair<string, string>> collisions)
+        public static void CheckFor2DCollisionsV1Nested(GlobalConfig config,ILogger _logger, DeviceSegment d1, DeviceSegment d2, List<CollisionAtDistanceAfterTime> collisions)
         {
-            // Get the 3D coordinates and speed of the first device
-            //HXbW5:fec727a1b624483aaf00e871b10462c5
-            var currentDeviceImei = d1.Key.Split(":")[1];
-
-            var currentDeviceCoords = d1.Value.Split(":")[0].Split(",");
-
-            Vector2 d1Pos = new Vector2(float.Parse(currentDeviceCoords[0] ?? "0"), float.Parse(currentDeviceCoords[1] ?? "0"));
-            float d1Speed = float.Parse(d1.Value.Split(":")[1] ?? "0");
-
-
-            var comparableDeviceImei = d2.Key.Split(":")[1];
-
-            Console.WriteLine($"Checking {currentDeviceImei} & {comparableDeviceImei}");
-
-            // Get the 3D coordinates and speed of the second device
-            var comparableDeviceCoords = d2.Value.Split(":")[0].Split(',');
-
-            Vector2 d2Pos = new Vector2(float.Parse(comparableDeviceCoords[0] ?? "0"), float.Parse(comparableDeviceCoords[1] ?? "0"));
-            float d2Speed = float.Parse(d2.Value.Split(":")[1] ?? "0");
+            //Gathering segments positions
+            Vector2 d1Pos = new Vector2(d1.Segment.X, d1.Segment.Y);
+            Vector2 d2Pos = new Vector2(d2.Segment.X, d2.Segment.Y);
 
             Vector2 relativeVelocity = d2Pos - d1Pos; // Calculate the relative velocity vector
             float relativeSpeed = relativeVelocity.Length(); // Calculate the relative speed
 
-            float timeToCollision = relativeSpeed > 0 ? relativeVelocity.Length() / (d1Speed + d2Speed) : float.MaxValue; // Calculate the time to collision
+            float timeToCollision = relativeSpeed > 0 ? relativeVelocity.Length() / (d1.LastSpeed + d2.LastSpeed) : float.MaxValue; // Calculate the time to collision
 
-            float distanceToCollision = timeToCollision * (d1Speed + d2Speed); // Calculate the distance to collision
+            float distanceToCollision = timeToCollision * (d1.LastSpeed + d2.LastSpeed); // Calculate the distance to collision
 
-            // Check if the two devices will collide and output the distance to collision
-            //if (distanceToCollision < _globalConfig.Constants.CollisionThreshold) // Replace 0.1f with your own collision threshold
-            //{
-            //    Console.WriteLine($"Devices {currentDeviceImei} & {comparableDeviceImei} will collide in {timeToCollision} seconds at a distance of {distanceToCollision} distance units.");
-            //}
+            //Check if the two devices will collide and output the distance to collision
+            if (distanceToCollision < config.Constants.CollisionThreshold) // Replace 0.1f with your own collision threshold
+            {
+                //Console.WriteLine($"Devices {d1.Imei} & {d2.Imei} will collide in {timeToCollision} seconds at a distance of {distanceToCollision} distance units.");
+                collisions.Add(new CollisionAtDistanceAfterTime { D1 = d1, D2 = d2, Distance = distanceToCollision, Time = timeToCollision });
+            }
             //else
             //{
-            //    Console.WriteLine($"Devices {currentDeviceImei} & {comparableDeviceImei} will not collide in the foreseeable future.");
+            //    Console.WriteLine($"Devices {d1.Imei} & {d2.Imei} will not collide in the foreseeable future.");
             //}
 
 
@@ -322,5 +309,26 @@ namespace AccidentDetectionWorker
             return collision;
         }
 
+        public static List<CollisionCheckCombination> PopulateCollisionCombinations(List<KeyValuePair<string, string>> devices)
+        {
+            List<CollisionCheckCombination> combinations = new List<CollisionCheckCombination>();
+
+            for (int i=0;i<devices.Count -1;i++)
+            {
+                DeviceSegment S1 = DeviceSegment.FromKeyValuePair(devices[i]);
+                for (int j = i + 1; j < devices.Count; j++)
+                {
+                    DeviceSegment S2 = DeviceSegment.FromKeyValuePair(devices[j]);
+
+                    if (!combinations.Where(comb => (comb.D1.Imei.Equals(S1.Imei) && comb.D2.Imei.Equals(S2.Imei)) || (comb.D2.Imei.Equals(S1.Imei) && comb.D1.Imei.Equals(S2.Imei))).Any())
+                    {
+                        combinations.Add(new CollisionCheckCombination { D1= S1, D2 = S2 });
+                    }
+                }
+            }
+
+
+            return combinations;
+        }
     }
 }

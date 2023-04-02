@@ -1,7 +1,6 @@
 using AccidentDetectionWorker.Business.AccidentDetection;
 using AccidentDetectionWorker.Business.Redis;
 using AccidentDetectionWorker.Models.Common;
-using AccidentDetectionWorker.Models.RedisModels.RedisDatabase;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using StackExchange.Redis;
