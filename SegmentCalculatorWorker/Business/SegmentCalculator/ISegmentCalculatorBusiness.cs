@@ -1,4 +1,5 @@
-﻿using System;
+﻿using StackExchange.Redis;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,7 +9,6 @@ namespace SegmentCalculatorWorker.Business.SegmentCalculator
 {
     public interface ISegmentCalculatorBusiness
     {
-        public Task StartService();
-        public Task StopService();
+        public void ProcessIntersection(IDatabase db, string key);
     }
 }

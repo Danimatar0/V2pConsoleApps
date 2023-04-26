@@ -80,18 +80,6 @@ namespace AccidentDetectionWorker
 
                 await Task.Delay(TimeSpan.FromSeconds(_globalConfig.Constants.RunJobEvery), stoppingToken);
             }
-
-            //while (!stoppingToken.IsCancellationRequested)
-            //{
-            //    using (var scope = _serviceScopeFactory.CreateScope())
-            //    {
-            //        _logger.LogInformation($"Worker running at: {DateTimeOffset.Now}");
-            //        //Console.WriteLine($"Worker running at: {DateTimeOffset.Now}");
-            //        IAccidentDetectionBusiness business = scope.ServiceProvider.GetService<IAccidentDetectionBusiness>();
-            //        await business.StartService();
-            //    }
-            //    await Task.Delay(TimeSpan.FromSeconds(_globalConfig.Constants.RunJobEvery), stoppingToken);
-            //}
         }
     }
 }

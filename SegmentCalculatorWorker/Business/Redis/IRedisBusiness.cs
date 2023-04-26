@@ -10,12 +10,11 @@ namespace SegmentCalculatorWorker.Business.Redis
     public interface IRedisBusiness
     {
         public IDatabase GetRedisDatabase();
-        public void Connect();
-        public void Disconnect();
+        //public ConnectionMultiplexer Connect();
+        public void Disconnect(IDatabase db);
         public void StringSet(string key, string value);
         public string StringGet(string key);
         public void StringDelete(string key);
-        public ISubscriber Subscribe();
         public void Unsubscribe(string channel);
         public void Publish(string channel, string message);
         public void SubscribeToChannels(List<string> channels);
@@ -34,6 +33,7 @@ namespace SegmentCalculatorWorker.Business.Redis
         public IEnumerable<HashEntry> HashScan(string key, string pattern, int cursor);
         public RedisValue ListGet(string key, long index);
         public void GenerateDummyHashData(string key, int n);
-        public void GenerateDummyDeviceCoordinateStringPair(string topicPrefix, int n);
+
+        public IEnumerable<object> GetList(string key);
     }
 }

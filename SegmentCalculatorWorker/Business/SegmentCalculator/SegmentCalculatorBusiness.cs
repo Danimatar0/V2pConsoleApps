@@ -26,18 +26,28 @@ namespace SegmentCalculatorWorker.Business.SegmentCalculator
             _logger = logger;
             _globalConfig = options.Value;
         }
+
+        public void ProcessIntersection(IDatabase db, string intersectionId)
+        {
+            Console.WriteLine($"Processing {intersectionId}..");
+
+            // Get the devices for the current intersection
+            List<KeyValuePair<string, string>> devices = new List<KeyValuePair<string, string>>();
+
+
+        }
         public async Task StartService()
         {
-            _logger.LogInformation("Starting segment calculator service");
-            _redisBusiness.Connect();
-            long topicsCount = GetTopicsCountFromChannel();
+            //_logger.LogInformation("Starting segment calculator service");
+            //_redisBusiness.Connect();
+            //long topicsCount = GetTopicsCountFromChannel();
 
-            //_redisBusiness.GenerateDummyHashData(_globalConfig.Constants.DevicesSegments,100);
-            //_redisBusiness.GenerateDummyDeviceCoordinateStringPair("HXbW5", 50);
-            if (topicsCount > 0)
-            {
-                StartProcesses(topicsCount);
-            }
+            ////_redisBusiness.GenerateDummyHashData(_globalConfig.Constants.DevicesSegments,100);
+            ////_redisBusiness.GenerateDummyDeviceCoordinateStringPair("HXbW5", 50);
+            //if (topicsCount > 0)
+            //{
+            //    StartProcesses(topicsCount);
+            //}
         }
         public async Task StartProcesses(long topicsCount)
         {
@@ -140,7 +150,7 @@ namespace SegmentCalculatorWorker.Business.SegmentCalculator
                         }
                     });
                 } while (cursor != 0);
-                _redisBusiness.Disconnect();
+                //_redisBusiness.Disconnect();
             }
             catch (Exception e)
             {

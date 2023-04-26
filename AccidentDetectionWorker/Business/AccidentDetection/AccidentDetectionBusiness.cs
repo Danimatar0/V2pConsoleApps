@@ -63,6 +63,7 @@ namespace AccidentDetectionWorker.Business.AccidentDetection
             _logger.LogWarning($"Detected {collisions.Count} collision(s) in intersection {intersectionId}");
 
             ///Here I will be propagating the results to MQTT BROKER -> Channel = tracking/intersectionId
+            ///
         }
 
         public IEnumerable<string> GetIntersectionsFromRedis()

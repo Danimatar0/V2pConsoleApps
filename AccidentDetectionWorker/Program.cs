@@ -3,22 +3,28 @@ using AccidentDetectionWorker;
 using AccidentDetectionWorker.Business.AccidentDetection;
 using AccidentDetectionWorker.Models.Common;
 using Microsoft.Extensions.Configuration;
-using Serilog;
+using NLog.Web;
+using NLog;
+using NLog.Extensions.Logging;
+using NLog.Fluent;
 
 class Program
 {
     static async Task Main(string[] args)
     {
+        var logger = NLog.LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
         try
         {
+
             IHost host = Host.CreateDefaultBuilder(args)
+                            .ConfigureLogging((logging) =>
+                            {
+                                logging.ClearProviders();
+                                logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+                                logging.AddNLog();
+                            }).UseNLog()
             .ConfigureServices((ctx, services) =>
             {
-                Log.Logger = new LoggerConfiguration()
-                        .ReadFrom.Configuration(ctx.Configuration.GetSection("Serilog"))
-                        .Enrich.FromLogContext()
-                        .CreateLogger();
-
                 services.Configure<GlobalConfig>(ctx.Configuration.GetSection("GlobalConfig"));
                 services.AddHostedService<Worker>();
                 services.AddSingleton<IRedisBusiness, RedisBusiness>();
@@ -30,13 +36,12 @@ class Program
         }
         catch (Exception ex)
         {
-            Log.Fatal(ex, "Host builder error");
-
+            logger.Error(ex.Message, "Host builder error");
             throw;
         }
         finally
         {
-            Log.CloseAndFlush();
+            LogManager.Flush();
         }
     }
 }
