@@ -32,8 +32,11 @@ namespace SegmentCalculatorWorker.Business.Redis
         public void HashGetAll(string key);
         public IEnumerable<HashEntry> HashScan(string key, string pattern, int cursor);
         public RedisValue ListGet(string key, long index);
+        public void ListDel(string key);
         public void GenerateDummyHashData(string key, int n);
 
         public IEnumerable<object> GetList(string key);
+        public IEnumerable<RedisKey> ScanKeys(string pattern);
+
     }
 }

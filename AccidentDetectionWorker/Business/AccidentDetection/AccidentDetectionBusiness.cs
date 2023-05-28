@@ -55,7 +55,7 @@ namespace AccidentDetectionWorker.Business.AccidentDetection
                 {
                     foreach (CollisionCheckCombination comb in combinations)
                     {
-                        CollisionHelper.CheckFor2DCollisionsV1Nested(_globalConfig,_logger, comb.D1, comb.D2, collisions);
+                        CollisionHelper.CheckFor2DCollisionsV1Nested(_globalConfig,_logger, comb.D1, comb.D2, ref collisions);
                     }
                 }
             }

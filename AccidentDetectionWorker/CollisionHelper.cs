@@ -11,7 +11,7 @@ namespace AccidentDetectionWorker
 {
     public static class CollisionHelper
     {
-        public static void CheckFor2DCollisionsV1Nested(GlobalConfig config,ILogger _logger, DeviceSegment d1, DeviceSegment d2, List<CollisionAtDistanceAfterTime> collisions)
+        public static void CheckFor2DCollisionsV1Nested(GlobalConfig config,ILogger _logger, DeviceSegment d1, DeviceSegment d2, ref List<CollisionAtDistanceAfterTime> collisions)
         {
             //Gathering segments positions
             Vector2 d1Pos = new Vector2(d1.Segment.X, d1.Segment.Y);

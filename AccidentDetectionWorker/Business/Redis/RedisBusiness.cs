@@ -270,5 +270,31 @@ namespace AccidentDetectionWorker.Business.Redis
         {
             return ConnectionMultiplexer.Connect(_configurationOptions);
         }
+
+        public IEnumerable<object> ScanKeys(string pattern)
+        {
+            try
+            {
+                List<object> enumerable = new List<object>();
+                IDatabase db = GetRedisDatabase();
+
+                long cursor = 0;
+                do
+                {
+                    string cmd = $"scan {cursor} match {pattern}";
+                    RedisResult result = db.Execute(cmd);
+
+                    Console.WriteLine(result.ToString());
+
+                } while (cursor != 0);
+
+                return enumerable;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError("Could not get value from Redis server: " + e.Message);
+                return new List<object>();
+            }
+        }
     }
 }

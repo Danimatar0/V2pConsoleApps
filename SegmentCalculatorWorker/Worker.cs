@@ -59,7 +59,7 @@ namespace SegmentCalculatorWorker
                                     _logger.LogInformation("Initiating new redis connection..");
                                     IDatabase db = _redisBusiness.GetRedisDatabase();
 
-                                    business.ProcessIntersection(db, item.ToString());
+                                    business.ProcessIntersection(db, item.ToString(),stoppingToken);
 
                                     _redisBusiness.Disconnect(db);
                                 });

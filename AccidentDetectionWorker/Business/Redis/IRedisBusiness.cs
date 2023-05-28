@@ -35,5 +35,6 @@ namespace AccidentDetectionWorker.Business.Redis
         public void GenerateDummyHashData(string key, int n);
 
         public IEnumerable<object> GetList(string key);
+        public IEnumerable<object> ScanKeys(string pattern);
     }
 }

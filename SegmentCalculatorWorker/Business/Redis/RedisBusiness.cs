@@ -17,6 +17,7 @@ namespace SegmentCalculatorWorker.Business.Redis
         //private readonly IRedisDatabase _db;
         private readonly GlobalConfig _config;
         private static ConfigurationOptions _configurationOptions;
+        private ConnectionMultiplexer _multiplexer;
 
         public RedisBusiness(ILogger<RedisBusiness> logger, IOptions<GlobalConfig> options)
         {
@@ -103,7 +104,17 @@ namespace SegmentCalculatorWorker.Business.Redis
 
         public void HashSetAdd(string key, string field, string value)
         {
-            throw new NotImplementedException();
+            try
+            {
+                IDatabase db = GetRedisDatabase();
+
+                db.HashSet(key, field, value);
+                Disconnect(db);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError("Could not get value from Redis server: " + e.Message);
+            }
         }
 
         public void JsonDelete(string key)
@@ -196,6 +207,18 @@ namespace SegmentCalculatorWorker.Business.Redis
             }
         }
 
+        public void ListDel(string key)
+        {
+            try
+            {
+                IDatabase db = GetRedisDatabase();
+                db.KeyDelete(key);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError("Could not delete list key from Redis server: " + e.Message);
+            }
+        }
         public void GenerateDummyHashData(string key, int n)
         {
             try
@@ -268,7 +291,37 @@ namespace SegmentCalculatorWorker.Business.Redis
 
         private ConnectionMultiplexer GetRedisConnection()
         {
-            return ConnectionMultiplexer.Connect(_configurationOptions);
+            if (_multiplexer == null)
+            {
+                _multiplexer = ConnectionMultiplexer.Connect(_configurationOptions);
+            }
+            return _multiplexer;
+        }
+        public IEnumerable<RedisKey> ScanKeys(string pattern)
+        {
+            IServer server = default;
+            List<RedisKey> enumerable = new List<RedisKey>();
+            try
+            {
+                ConnectionMultiplexer connection = GetRedisConnection();
+
+                server = connection.GetServer($"{_config.RedisConfig.Host}:{_config.RedisConfig.Port}");
+                IDatabase db = connection.GetDatabase();
+
+                // show all keys in database 0 that include the given pattern in their name
+                enumerable.AddRange(server.Keys(pattern: pattern).ToList());
+
+                return enumerable;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError("Could not get value from Redis server: " + e.Message);
+                return new List<RedisKey>();
+            }
+            //finally
+            //{
+            //    server.FlushDatabase();
+            //}
         }
     }
 }

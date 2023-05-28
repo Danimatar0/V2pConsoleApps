@@ -9,6 +9,6 @@ namespace SegmentCalculatorWorker.Business.SegmentCalculator
 {
     public interface ISegmentCalculatorBusiness
     {
-        public void ProcessIntersection(IDatabase db, string key);
+        public void ProcessIntersection(IDatabase db, string key, CancellationToken stoppingToken);
     }
 }
