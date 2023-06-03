@@ -9,7 +9,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Helpers", "Helpers\Helpers.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DataMigrator", "DataMigrator\DataMigrator.csproj", "{1B1070E1-2CE5-4879-A17A-C2FF462C4C48}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SegmentCalculatorWorker", "SegmentCalculatorWorker\SegmentCalculatorWorker.csproj", "{0DA54B11-3416-45D7-9815-52242F35F23E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SegmentCalculatorWorker", "SegmentCalculatorWorker\SegmentCalculatorWorker.csproj", "{0DA54B11-3416-45D7-9815-52242F35F23E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MqttService", "MqttService\MqttService.csproj", "{0CD95319-A06D-4C8F-8C97-B58C9C9E2527}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{0DA54B11-3416-45D7-9815-52242F35F23E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0DA54B11-3416-45D7-9815-52242F35F23E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0DA54B11-3416-45D7-9815-52242F35F23E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0CD95319-A06D-4C8F-8C97-B58C9C9E2527}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0CD95319-A06D-4C8F-8C97-B58C9C9E2527}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0CD95319-A06D-4C8F-8C97-B58C9C9E2527}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0CD95319-A06D-4C8F-8C97-B58C9C9E2527}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
