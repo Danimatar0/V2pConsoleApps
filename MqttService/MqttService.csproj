@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="6.0.0" />
     <PackageReference Include="MQTTnet" Version="4.2.1.781" />
     <PackageReference Include="MQTTnet.Extensions.ManagedClient" Version="4.2.1.781" />
     <PackageReference Include="NLog" Version="5.1.3" />

@@ -7,6 +7,8 @@ using NLog.Web;
 using NLog;
 using NLog.Extensions.Logging;
 using NLog.Fluent;
+using MqttService.Service;
+using MqttService.Models;
 
 class Program
 {
@@ -29,6 +31,7 @@ class Program
                 services.AddHostedService<Worker>();
                 services.AddSingleton<IRedisBusiness, RedisBusiness>();
                 services.AddSingleton<IAccidentDetectionBusiness, AccidentDetectionBusiness>();
+                services.AddTransient<IMQTTService, MQTTService>();
             })
             .Build();
 

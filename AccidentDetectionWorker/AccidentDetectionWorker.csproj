@@ -27,5 +27,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Helpers\Helpers.csproj" />
+    <ProjectReference Include="..\MqttService\MqttService.csproj" />
   </ItemGroup>
 </Project>

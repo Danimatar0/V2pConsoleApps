@@ -31,7 +31,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\DataMigrator\DataMigrator.csproj" />
 		<ProjectReference Include="..\Helpers\Helpers.csproj" />
 	</ItemGroup>
 </Project>

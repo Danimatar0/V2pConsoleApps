@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MqttService.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -13,13 +14,6 @@ namespace AccidentDetectionWorker.Models.Common
         public RedisChannels RedisChannels { get; set; }
         public Constants Constants { get; set; }
     }
-
-    public class MqttConfig
-    {
-        public string Host { get; set; }
-        public int Port { get; set; }
-    }
-
     public class RedisConfig
     {
         public string Host { get; set; }
