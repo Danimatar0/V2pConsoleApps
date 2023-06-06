@@ -42,7 +42,7 @@ namespace SegmentCalculatorWorker.Business.SegmentCalculator
             List<KeyValuePair<string, string>> devices = new List<KeyValuePair<string, string>>();
 
             //this string will be used to fetch all redis keys linked to devices coordinates
-            string topicPrefix = $"tracking/{intersectionId}:*";
+            string topicPrefix = $"realData/{intersectionId}:*";
 
             try
             {
