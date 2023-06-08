@@ -73,7 +73,7 @@ namespace AccidentDetectionWorker.Business.AccidentDetection
                 {
                     var paylod = new 
                     {
-                        data = $"{coll.D1}:{coll.D2}",
+                        data = $"{Guid.NewGuid()}-{coll.D1}:{coll.D2}",
                         sent = DateTimeOffset.UtcNow
                     };
                     _mqttService.PublishAsync(_mqttConfig.P2PChannel, JsonConvert.SerializeObject(paylod));
