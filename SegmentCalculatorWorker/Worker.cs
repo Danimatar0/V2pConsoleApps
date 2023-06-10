@@ -52,7 +52,7 @@ namespace SegmentCalculatorWorker
                         if (intersections.Count > 0)
                         {
                             //Parallel.ForEach to iterate over the list of intersections in parallel
-                            await Task.Run(() =>
+                            Task.Run(async() =>
                             {
                                 Parallel.ForEach(intersections, options, item =>
                                 {

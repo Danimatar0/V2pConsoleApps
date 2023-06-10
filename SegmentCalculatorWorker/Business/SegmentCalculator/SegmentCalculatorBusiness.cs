@@ -63,14 +63,16 @@ namespace SegmentCalculatorWorker.Business.SegmentCalculator
                     Parallel.ForEach(batches, batch =>
                     {
                         var batchTasks = new List<Task>();
-                        foreach (IEnumerable<object> coordinateArray in batch)
+                        Parallel.ForEach(batch, coordinateArray =>
                         {
-                            var task = Task.Run(() => PushDeviceSegmentV2(intersectionId, coordinateArray.ToList()));
-                            batchTasks.Add(task);
-                        }
-                        Task.WaitAll(batchTasks.ToArray());
+                            var task = Task.Run(async () => PushDeviceSegmentV2(intersectionId, ((IEnumerable<object>)coordinateArray).ToList()));
+                        });
+                        //foreach (IEnumerable<object> coordinateArray in batch)
+                        //{
+                        //    batchTasks.Add(task);
+                        //}
+                        //Task.WaitAll(batchTasks.ToArray());
                     });
-
                 }
             }
             catch (Exception ex)
@@ -171,7 +173,7 @@ namespace SegmentCalculatorWorker.Business.SegmentCalculator
                 segmentCoordinates.Add((float)Math.Round((double)(point1[i] + difference[i] * (1.0 / length)), 2));
             }
 
-            return string.Join(",",segmentCoordinates) + "|" + length;
+            return string.Join(",", segmentCoordinates) + "|" + length;
         }
 
         private async Task PushDeviceSegmentV1(string intersectionId)
