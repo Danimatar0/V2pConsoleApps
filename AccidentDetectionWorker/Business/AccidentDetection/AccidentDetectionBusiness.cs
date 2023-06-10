@@ -28,59 +28,72 @@ namespace AccidentDetectionWorker.Business.AccidentDetection
         private readonly IRedisBusiness _redisBusiness;
         private ConcurrentBag<Task> tasks = new ConcurrentBag<Task>();
         private readonly IMQTTService _mqttService;
-        private readonly MqttConfig _mqttConfig;
-        public AccidentDetectionBusiness(ILogger<AccidentDetectionBusiness> logger, IRedisBusiness business, IOptions<GlobalConfig> options, IMQTTService mQTTService, IOptions<MqttConfig> options1)
+        public AccidentDetectionBusiness(ILogger<AccidentDetectionBusiness> logger, IRedisBusiness business, IOptions<GlobalConfig> options, IMQTTService mQTTService)
         {
             _redisBusiness = business;
             _logger = logger;
             _globalConfig = options.Value;
             _mqttService = mQTTService;
-            _mqttConfig = options1.Value;
         }
         //_redisBusiness.GenerateDummyHashData(_globalConfig.Constants.DevicesSegments, 2);
-        public void ProcessIntersection(IDatabase db, string intersectionId)
+        public void ProcessIntersection(CancellationToken stoppingToken,IDatabase db, string intersectionId)
         {
             Console.WriteLine($"Processing {intersectionId}..");
+
+            var options = new ParallelOptions
+            {
+                MaxDegreeOfParallelism = Environment.ProcessorCount > 4 ? 6 : Environment.ProcessorCount,
+                CancellationToken = stoppingToken
+            };
+
 
             // Get the devices for the current intersection
             List<KeyValuePair<string, string>> devices = new List<KeyValuePair<string, string>>();
 
             devices = GetDevices(db, intersectionId);
 
-            //_logger.LogInformation($"Found {devices.Count} in intersection {intersectionId}");
             //Populate all possible combinations, this list will be iterated over to check for any possible collision
 
             var collisions = new List<CollisionAtDistanceAfterTime>();
             if (devices.Count > 0)
             {
+                Console.WriteLine($"Populating collision combinations for intersection: {intersectionId}..");
+                _logger.LogInformation($"Populating collision combinations for intersection: {intersectionId}..");
+
                 List<CollisionCheckCombination> combinations = CollisionHelper.PopulateCollisionCombinations(devices);
 
                 if (combinations != null && combinations.Count > 0)
                 {
-                    foreach (CollisionCheckCombination comb in combinations)
+                    Console.WriteLine($"Checking for collisions for intersection: {intersectionId}..");
+                    _logger.LogInformation($"Checking for collisions for intersection: {intersectionId}..");
+
+                    Parallel.ForEach(combinations, options, comb =>
                     {
-                        CollisionHelper.CheckFor2DCollisionsV1Nested(_globalConfig, _logger, comb.D1, comb.D2, ref collisions);
-                    }
+                        Task.Run(async () =>
+                        {
+                            CollisionHelper.CheckFor2DCollisionsV1Nested(_globalConfig, _logger, comb.D1, comb.D2, ref collisions);
+                        });
+                    });
+                }
+
+                if (collisions.Count > 0)
+                {
+                    Console.WriteLine($"Detected {collisions.Count} collision(s) in intersection {intersectionId}");
+                    _logger.LogWarning($"Detected {collisions.Count} collision(s) in intersection {intersectionId}");
+
+                    ///NEEDS TO BE OPTIMIZED(messages queueing)
+                    Parallel.ForEach(collisions, coll =>
+                    {
+                        Task.Run(async () =>
+                        {
+                            string payload = $"{Guid.NewGuid()}|{coll.D1.Imei}:{coll.D2.Imei}";
+                            await ConnectMQTTAndPublish(_globalConfig.MqttConfig, _mqttService, payload);
+                        });
+                    });
                 }
             }
-
-            if (collisions.Count > 0)
-            {
-                _logger.LogWarning($"Detected {collisions.Count} collision(s) in intersection {intersectionId}");
-
-                ///NEEDS TO BE OPTIMIZED(messages queueing)
-                collisions.ForEach(coll =>
-                {
-                    var paylod = new 
-                    {
-                        data = $"{Guid.NewGuid()}-{coll.D1}:{coll.D2}",
-                        sent = DateTimeOffset.UtcNow
-                    };
-                    _mqttService.PublishAsync(_mqttConfig.P2PChannel, JsonConvert.SerializeObject(paylod));
-                });
-            }
         }
-
+         
         public IEnumerable<string> GetIntersectionsFromRedis()
         {
             IEnumerable<string> intersections = new List<string>();
@@ -167,5 +180,14 @@ namespace AccidentDetectionWorker.Business.AccidentDetection
             return results;
         }
 
+        private async Task ConnectMQTTAndPublish(MqttConfig config,IMQTTService service,string payload)
+        {
+            string clientId = "AccidentDetector";
+            string mqttURI = config.UsePublicHost ? config.PublicHostTest : config.Host;
+            int mqttPort = config.Port;
+
+            await service.StartAsync(mqttURI, clientId, string.Empty, string.Empty);
+            service.PublishAsync(config.P2PChannel, payload);
+        }
     }
 }

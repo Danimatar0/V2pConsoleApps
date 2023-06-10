@@ -9,6 +9,6 @@ namespace AccidentDetectionWorker.Business.AccidentDetection
 {
     public interface IAccidentDetectionBusiness
     {
-        public void ProcessIntersection(IDatabase db,string key);
+        public void ProcessIntersection(CancellationToken stoppingToken,IDatabase db,string key);
     }
 }

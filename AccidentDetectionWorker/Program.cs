@@ -29,9 +29,9 @@ class Program
             {
                 services.Configure<GlobalConfig>(ctx.Configuration.GetSection("GlobalConfig"));
                 services.AddHostedService<Worker>();
+                services.AddTransient<IMQTTService, MQTTService>();
                 services.AddSingleton<IRedisBusiness, RedisBusiness>();
                 services.AddSingleton<IAccidentDetectionBusiness, AccidentDetectionBusiness>();
-                services.AddTransient<IMQTTService, MQTTService>();
             })
             .Build();
 

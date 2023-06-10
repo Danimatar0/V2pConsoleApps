@@ -47,27 +47,30 @@ namespace AccidentDetectionWorker
                         //Getting injected IAccidentDetectionBusiness instance
                         IAccidentDetectionBusiness business = scope.ServiceProvider.GetService<IAccidentDetectionBusiness>();
 
+                        Console.WriteLine("Fetching intersections..");
                         _logger.LogInformation("Fetching intersections..");
 
                         //Fetching list of intersections names
                         List<object> intersections = (List<object>)_redisBusiness.GetList(_globalConfig.Constants.IntersectionIds);
 
+                        Console.WriteLine($"Found {intersections.Count} intersections in redis");
                         _logger.LogInformation($"Found {intersections.Count} intersections in redis");
                         if (intersections.Count > 0)
                         {
                             //Parallel.ForEach to iterate over the list of intersections in parallel
-                            await Task.Run(() =>
+                            Parallel.ForEach(intersections, options, item =>
                             {
-                                Parallel.ForEach(intersections, options, item =>
-                                {
-                                    _logger.LogInformation("Initiating new redis connection..");
-                                    IDatabase db = _redisBusiness.GetRedisDatabase();
+                                Task.Run(async() =>
+                                    {
+                                        Console.WriteLine("Initiating new redis connection..");
+                                        _logger.LogInformation("Initiating new redis connection..");
+                                        IDatabase db = _redisBusiness.GetRedisDatabase();
 
-                                    business.ProcessIntersection(db, item.ToString());
+                                        business.ProcessIntersection(stoppingToken,db, item.ToString());
 
-                                    _redisBusiness.Disconnect(db);
-                                });
-                            }, stoppingToken);
+                                        _redisBusiness.Disconnect(db);
+                                    }, stoppingToken);
+                            });
                         }
                     }
                 }
