@@ -49,30 +49,45 @@ namespace SegmentCalculatorWorker.Business.SegmentCalculator
                 //Get list of devices coordinates list keys which name starting with pattern -> topicPrefix
                 IEnumerable<RedisKey> devicesCoordinatesListKeys = _redisBusiness.ScanKeys(topicPrefix);
 
+                Console.WriteLine($"Found {devicesCoordinatesListKeys.Count()} devices coordinates list keys for pattern {topicPrefix}");
+
                 if (devicesCoordinatesListKeys != null && devicesCoordinatesListKeys.Count() > 0)
                 {
                     List<object> coordinatesPerIntersection = new List<object>();
+                    //foreach (RedisKey key in devicesCoordinatesListKeys)
+                    //{
+                    //    var dataForTopic = _redisBusiness.GetList(key).Select(cord => $"{key};{cord}").ToList();
+                    //    coordinatesPerIntersection.Add(dataForTopic);
+                    //}
+
                     coordinatesPerIntersection.AddRange(devicesCoordinatesListKeys
                             .Select(key => _redisBusiness.GetList(key).Select(cord => $"{key};{cord}").ToList())
                             .ToList());
 
-                    //Now using multi-threading/processing, push these coordinates to deviceSegments Hash
-                    IEnumerable<IEnumerable<object>> batches = coordinatesPerIntersection.Batch<object>(_globalConfig.Constants.BatchSize);
 
-
-                    Parallel.ForEach(batches, batch =>
+                    if (coordinatesPerIntersection.Count() > 0)
                     {
-                        var batchTasks = new List<Task>();
-                        Parallel.ForEach(batch, coordinateArray =>
+
+
+                        //Now using multi-threading/processing, push these coordinates to deviceSegments Hash
+                        IEnumerable<IEnumerable<object>> batches = coordinatesPerIntersection.Batch<object>(_globalConfig.Constants.BatchSize);
+
+
+                        Parallel.ForEach(batches, batch =>
                         {
-                            var task = Task.Run(async () => PushDeviceSegmentV2(intersectionId, ((IEnumerable<object>)coordinateArray).ToList()));
+                            var batchTasks = new List<Task>();
+                            Parallel.ForEach(batch, coordinateArray =>
+                            {
+                                var task = Task.Run(async () => PushDeviceSegmentV2(((IEnumerable<object>)coordinateArray).ToList()));
+                            });
+                            //foreach (IEnumerable<object> coordinateArray in batch)
+                            //{
+                            //    batchTasks.Add(task);
+                            //}
+                            //Task.WaitAll(batchTasks.ToArray());
                         });
-                        //foreach (IEnumerable<object> coordinateArray in batch)
-                        //{
-                        //    batchTasks.Add(task);
-                        //}
-                        //Task.WaitAll(batchTasks.ToArray());
-                    });
+                    }
+
                 }
             }
             catch (Exception ex)
@@ -117,45 +132,50 @@ namespace SegmentCalculatorWorker.Business.SegmentCalculator
 
         }
 
-        private async Task PushDeviceSegmentV2(string intersectionId, List<object> deviceCoordinates)
+        private async Task PushDeviceSegmentV2(List<object> deviceCoordinates)
         {
 
-            //string hashKey = $"{intersectionId}:{deviceCoordinates[0].ToString().Split(":")[0] ?? ""}";
-            try
+            if (!deviceCoordinates.IsEmpty())
             {
-                string redisKey = $"{deviceCoordinates[0].ToString().Split(";")[0].Split("/")[1]}";
+                //string hashKey = $"{intersectionId}:{deviceCoordinates[0].ToString().Split(":")[0] ?? ""}";
+                try
+                {
+                    string redisKey = $"{deviceCoordinates[0].ToString().Split(";")[0].Split("/")[1]}";
 
-                ///Time format should be : yyyyMMddHHmmss
-                string lastCoordTime = deviceCoordinates.LastOrDefault().ToString().Split(";")[1];
+                    ///Time format should be : yyyyMMddHHmmss
+                    string lastCoordTime = deviceCoordinates.LastOrDefault().ToString().Split(";")[1];
 
-                var lastTime = DateTime.ParseExact(lastCoordTime.Split("|")[1], "yyyyMMddHHmmss", CultureInfo.InvariantCulture);
-                List<float> l1 = lastCoordTime.Split("|")[0].TrimStart('[').TrimEnd(']').Split(',')
-                       .Select(s => float.Parse(s)).ToList();
+                    var lastTime = DateTime.ParseExact(lastCoordTime.Split("|")[1], "yyyyMMddHHmmss", CultureInfo.InvariantCulture);
+                    List<float> l1 = lastCoordTime.Split("|")[0].TrimStart('[').TrimEnd(']').Split(',')
+                           .Select(s => float.Parse(s)).ToList();
 
-                string firstCoordTime = deviceCoordinates.FirstOrDefault().ToString().Split(";")[1];
-                var firstTime = DateTime.ParseExact(firstCoordTime.Split("|")[1], "yyyyMMddHHmmss", CultureInfo.InvariantCulture);
-                List<float> l2 = firstCoordTime.Split("|")[0].TrimStart('[').TrimEnd(']').Split(',')
-                       .Select(s => float.Parse(s)).ToList();
+                    string firstCoordTime = deviceCoordinates.FirstOrDefault().ToString().Split(";")[1];
+                    var firstTime = DateTime.ParseExact(firstCoordTime.Split("|")[1], "yyyyMMddHHmmss", CultureInfo.InvariantCulture);
+                    List<float> l2 = firstCoordTime.Split("|")[0].TrimStart('[').TrimEnd(']').Split(',')
+                           .Select(s => float.Parse(s)).ToList();
 
+                    Console.WriteLine($"Calculating segment for {redisKey.Split(":")[1]}");
+                    // Calculate the coordinates of the segment joining the two points.
+                    string segmentCoordinateString = GetSegmentCoordinates(l2, l1);
+                    string segment = segmentCoordinateString.Split("|")[0];
+                    float distanceTraveled = (float)Math.Round(double.Parse(segmentCoordinateString.Split("|")[1] ?? "0"));
 
-                // Calculate the coordinates of the segment joining the two points.
-                string segment = GetSegmentCoordinates(l2, l1).Split("|")[0];
-                float distanceTraveled = (float)Math.Round(double.Parse(GetSegmentCoordinates(l2, l1).Split("|")[1] ?? "0"));
+                    // Calculate the speed.
+                    var speed = distanceTraveled == 0 ? 0 : distanceTraveled / ((lastTime - firstTime).TotalSeconds);
 
-                // Calculate the speed.
-                var speed = distanceTraveled / ((lastTime - firstTime).TotalSeconds);
+                    string redisValue = $"{segment}:{speed}";
 
-                string redisValue = $"{segment}:{speed}";
+                    _redisBusiness.HashSetAdd(_globalConfig.Constants.DevicesSegments, redisKey, redisValue);
 
-                _redisBusiness.HashSetAdd(_globalConfig.Constants.DevicesSegments, redisKey, redisValue);
+                    //Remove the list from redis for optimization
+                    string keyToDelete = $"{deviceCoordinates[0].ToString().Split(";")[0]}";
+                    _redisBusiness.ListDel(keyToDelete);
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError($"Exception while trying to push new segment to deviceSegments: {e.Message}");
+                }
 
-                //Remove the list from redis for optimization
-                string keyToDelete = $"{deviceCoordinates[0].ToString().Split(";")[0]}";
-                _redisBusiness.ListDel(keyToDelete);
-            }
-            catch (Exception e)
-            {
-                _logger.LogError($"Exception while trying to push new segment to deviceSegments: {e.Message}");
             }
         }
 
@@ -168,12 +188,31 @@ namespace SegmentCalculatorWorker.Business.SegmentCalculator
 
             // Create a list to store the coordinates of the segment.
             var segmentCoordinates = new List<float>();
-            for (int i = 0; i < point1.Count; i++)
-            {
-                segmentCoordinates.Add((float)Math.Round((double)(point1[i] + difference[i] * (1.0 / length)), 2));
-            }
+            //for (int i = 0; i < point1.Count; i++)
+            //{
+            //    Console.WriteLine($"Adding coordinate part: {point1[i]}");
+            //    double d = (point1[i] + difference[i] * (1.0 / length));
+            //    float segmCoordinate = (float)Math.Round(, 2);
+            //}
+            segmentCoordinates.AddRange(CalculateCoordinate(point1.ToArray(), point2.ToArray()));
 
+            Console.WriteLine($"Device Segment ==> {JsonConvert.SerializeObject(segmentCoordinates)}");
             return string.Join(",", segmentCoordinates) + "|" + length;
+        }
+
+        static float[] CalculateCoordinate(float[] point1, float[] point2)
+        {
+            // Calculate the x-coordinate of the coordinate joining the two points.
+            float x = (point1[0] + point2[0]) / 2;
+
+            // Calculate the y-coordinate of the coordinate joining the two points.
+            float y = (point1[1] + point2[1]) / 2;
+
+            // Calculate the z-coordinate of the coordinate joining the two points.
+            float z = (point1[2] + point2[2]) / 2;
+
+            // Return the coordinate.
+            return new float[] { x, y, z };
         }
 
         private async Task PushDeviceSegmentV1(string intersectionId)

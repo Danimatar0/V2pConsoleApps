@@ -86,7 +86,7 @@ namespace AccidentDetectionWorker.Business.AccidentDetection
                     {
                         Task.Run(async () =>
                         {
-                            string payload = $"{Guid.NewGuid()}|{coll.D1.Imei}:{coll.D2.Imei}";
+                            string payload = $"{coll.Distance}|{coll.D1.Imei}:{coll.D2.Imei}";
                             await ConnectMQTTAndPublish(_globalConfig.MqttConfig, _mqttService, payload);
                         });
                     });

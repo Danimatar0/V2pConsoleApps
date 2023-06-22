@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using ILogger = Serilog.ILogger;
+using Microsoft.Extensions.FileSystemGlobbing.Internal;
 
 namespace SegmentCalculatorWorker.Business.Redis
 {
@@ -106,10 +107,20 @@ namespace SegmentCalculatorWorker.Business.Redis
         {
             try
             {
-                IDatabase db = GetRedisDatabase();
+                //IDatabase db = GetRedisDatabase();
 
-                db.HashSet(key, field, value);
-                Disconnect(db);
+                //db.HashSet(key, field, value);
+                //Disconnect(db);
+                using (ConnectionMultiplexer connection = ConnectionMultiplexer.Connect(_configurationOptions))
+                {
+                    var endpoints = connection.GetEndPoints();
+                    foreach (var endpoint in endpoints)
+                    {
+                        var server = connection.GetServer(endpoint);
+                        IDatabase db = connection.GetDatabase();
+                        db.HashSet(key, field, value);
+                    }
+                }
             }
             catch (Exception e)
             {
@@ -211,8 +222,16 @@ namespace SegmentCalculatorWorker.Business.Redis
         {
             try
             {
-                IDatabase db = GetRedisDatabase();
-                db.KeyDelete(key);
+                using (ConnectionMultiplexer connection = ConnectionMultiplexer.Connect(_configurationOptions))
+                {
+                    var endpoints = connection.GetEndPoints();
+                    foreach (var endpoint in endpoints)
+                    {
+                        var server = connection.GetServer(endpoint);
+                        IDatabase db = connection.GetDatabase();
+                        db.KeyDelete(key);
+                    }
+                }
             }
             catch (Exception e)
             {
@@ -252,29 +271,44 @@ namespace SegmentCalculatorWorker.Business.Redis
         public IEnumerable<object> GetList(string key)
         {
 
+            List<object> enumerable = new List<object>();
             try
             {
-                List<object> enumerable = new List<object>();
-                IDatabase db = GetRedisDatabase();
+                //IDatabase db = GetRedisDatabase();
 
-                if (db.IsConnected(key))
+                //if (db.IsConnected(key))
+                //{
+                //    RedisValue[] redisValues = db.ListRange(key);
+
+                //    foreach (RedisValue redisValue in redisValues)
+                //    {
+                //        enumerable.Add((object)redisValue);
+                //    }
+
+                //    Disconnect(db);
+                //}
+
+                using (ConnectionMultiplexer connection = ConnectionMultiplexer.Connect(_configurationOptions))
                 {
-                    RedisValue[] redisValues = db.ListRange(key);
-
-                    foreach (RedisValue redisValue in redisValues)
+                    var endpoints = connection.GetEndPoints();
+                    foreach (var endpoint in endpoints)
                     {
-                        enumerable.Add((object)redisValue);
-                    }
+                        var server = connection.GetServer(endpoint);
+                        IDatabase db = connection.GetDatabase();
+                        RedisValue[] redisValues = db.ListRange(key);
 
+                        foreach (RedisValue redisValue in redisValues)
+                        {
+                            enumerable.Add((object)redisValue);
+                        }
+                    }
                 }
-                Disconnect(db);
-                return enumerable;
             }
             catch (Exception e)
             {
                 _logger.LogError("Could not get value from Redis server: " + e.Message);
-                return new List<object>();
             }
+            return enumerable;
         }
         public void Disconnect(IDatabase db)
         {
@@ -299,17 +333,26 @@ namespace SegmentCalculatorWorker.Business.Redis
         }
         public IEnumerable<RedisKey> ScanKeys(string pattern)
         {
-            IServer server = default;
+            //IServer server = default;
             List<RedisKey> enumerable = new List<RedisKey>();
             try
             {
-                ConnectionMultiplexer connection = GetRedisConnection();
+                //ConnectionMultiplexer connection = GetRedisConnection();
+                using (ConnectionMultiplexer connection = ConnectionMultiplexer.Connect(_configurationOptions))
+                {
+                    var endpoints = connection.GetEndPoints();
+                    foreach (var endpoint in endpoints)
+                    {
+                        var server = connection.GetServer(endpoint);
+                        enumerable.AddRange(server.Keys(pattern: pattern).ToList());
+                    }
+                }
 
-                server = connection.GetServer($"{_config.RedisConfig.Host}:{_config.RedisConfig.Port}");
-                IDatabase db = connection.GetDatabase();
+                ////server = connection.GetServer($"{_config.RedisConfig.Host}:{_config.RedisConfig.Port}");
+                //server = connection.GetServer("172.25.68.156:6379");
 
-                // show all keys in database 0 that include the given pattern in their name
-                enumerable.AddRange(server.Keys(pattern: pattern).ToList());
+                //// show all keys in database 0 that include the given pattern in their name
+                //enumerable.AddRange(server.Keys(pattern: pattern).ToList());
 
                 return enumerable;
             }
