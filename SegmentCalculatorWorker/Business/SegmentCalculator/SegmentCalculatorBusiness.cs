@@ -1,4 +1,5 @@
 ﻿using Helpers;
+using Helpers.Models;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.Extensions.FileSystemGlobbing.Internal;
 using Microsoft.Extensions.Options;
@@ -155,6 +156,7 @@ namespace SegmentCalculatorWorker.Business.SegmentCalculator
                            .Select(s => float.Parse(s)).ToList();
 
                     Console.WriteLine($"Calculating segment for {redisKey.Split(":")[1]}");
+
                     // Calculate the coordinates of the segment joining the two points.
                     string segmentCoordinateString = GetSegmentCoordinates(l2, l1);
                     string segment = segmentCoordinateString.Split("|")[0];
@@ -188,28 +190,22 @@ namespace SegmentCalculatorWorker.Business.SegmentCalculator
 
             // Create a list to store the coordinates of the segment.
             var segmentCoordinates = new List<float>();
-            //for (int i = 0; i < point1.Count; i++)
-            //{
-            //    Console.WriteLine($"Adding coordinate part: {point1[i]}");
-            //    double d = (point1[i] + difference[i] * (1.0 / length));
-            //    float segmCoordinate = (float)Math.Round(, 2);
-            //}
-            segmentCoordinates.AddRange(CalculateCoordinate(point1.ToArray(), point2.ToArray()));
+
+            segmentCoordinates.AddRange(CalculateLineCoordinate(point1.ToArray(), point2.ToArray()));
 
             Console.WriteLine($"Device Segment ==> {JsonConvert.SerializeObject(segmentCoordinates)}");
             return string.Join(",", segmentCoordinates) + "|" + length;
         }
 
-        static float[] CalculateCoordinate(float[] point1, float[] point2)
+        static float[] CalculateLineCoordinate(float[] point1, float[] point2)
         {
             // Calculate the x-coordinate of the coordinate joining the two points.
-            float x = (point1[0] + point2[0]) / 2;
+            Line line = new Line(new Point3D(point1[0], point1[1], point1[2]), new Point3D(point2[0], point2[1], point2[2]));
+            float[] coords = line.ToString().Split(",").Select(x => float.Parse(x)).ToArray();
 
-            // Calculate the y-coordinate of the coordinate joining the two points.
-            float y = (point1[1] + point2[1]) / 2;
-
-            // Calculate the z-coordinate of the coordinate joining the two points.
-            float z = (point1[2] + point2[2]) / 2;
+            float x = coords[0];
+            float y = coords[1];
+            float z = coords[2];
 
             // Return the coordinate.
             return new float[] { x, y, z };
