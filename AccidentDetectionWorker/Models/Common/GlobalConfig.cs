@@ -47,6 +47,7 @@ namespace AccidentDetectionWorker.Models.Common
         public int CollisionThreshold { get; set; }
         public float TimeSteps { get; set; }
         public int BatchSize { get; set; }
+        public int MaxCollisionTime { get; set; }
     }
 
 }

@@ -1,7 +1,9 @@
 ﻿using AccidentDetectionWorker.Models.Common;
 using AccidentDetectionWorker.Models.RedisModels;
+using Helpers.Models;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Numerics;
 using System.Text;
@@ -11,7 +13,166 @@ namespace AccidentDetectionWorker
 {
     public static class CollisionHelper
     {
-        public static void CheckFor2DCollisionsV1Nested(GlobalConfig config,ILogger _logger, DeviceSegment d1, DeviceSegment d2, ref List<CollisionAtDistanceAfterTime> collisions)
+        public static void CheckFor2DCollisionsV2Nested(GlobalConfig config, ILogger _logger, DeviceSegment d1, DeviceSegment d2, ref List<CollisionAtDistanceAfterTime> collisions)
+        {
+            Line line1 = new Line(d1.Segment.X, d1.Segment.Y, d1.Segment.Z);
+            Line line2 = new Line(d2.Segment.X, d2.Segment.Y, d2.Segment.Z);
+
+            ///Only check for intersection if the distance between above lines are < 10 for example -> better performance and avoid unneeded check for collision
+            double distanceBetweenLines = CalculateDistance(line1, line2);
+
+            if (distanceBetweenLines < config.Constants.CollisionThreshold)
+            {
+                // Get the constants a, b, c for the line equations of the devices
+                double a1 = d1.Segment.X;
+                double b1 = d1.Segment.Y;
+                double c1 = d1.Segment.Z;
+
+                double a2 = d2.Segment.X;
+                double b2 = d2.Segment.Y;
+                double c2 = d2.Segment.Z;
+
+                // Get the speeds of the devices
+                double speed1 = d1.LastSpeed;
+                double speed2 = d2.LastSpeed;
+
+                // Calculate the relative constants for the line equations
+                double relativeA = a2 - a1;
+                double relativeB = b2 - b1;
+                double relativeC = c2 - c1;
+
+                // Calculate the relative speeds of the devices
+                double relativeSpeedA = speed2 * relativeA - speed1 * relativeA;
+                double relativeSpeedB = speed2 * relativeB - speed1 * relativeB;
+                double relativeSpeedC = speed2 * relativeC - speed1 * relativeC;
+
+                // Check if the lines are parallel or coincident
+                if (relativeA == 0 && relativeB == 0)
+                {
+                    Console.WriteLine("Lines are parallel or coincident. No collision predicted.");
+                    return;
+                }
+
+                // Check if the lines are moving away from each other
+                if (relativeSpeedA >= 0 && relativeSpeedB >= 0)
+                {
+                    Console.WriteLine("Lines are moving away from each other. No collision predicted.");
+                    return;
+                }
+
+                // Calculate the time it would take for each device to reach the collision point
+                double timeToCollision1 = relativeC / relativeSpeedA;
+                double timeToCollision2 = relativeC / relativeSpeedB;
+
+
+                if (timeToCollision1 < 0 || timeToCollision2 < 0)
+                {
+                    // One or both devices are already colliding or moving away from each other
+                    Console.WriteLine("Collision already occurred or devices moving away from each other.");
+                    return;
+                }
+
+                if (timeToCollision1 > config.Constants.MaxCollisionTime || timeToCollision2 > config.Constants.MaxCollisionTime)
+                {
+                    // One or both devices are already colliding or moving away from each other
+                    Console.WriteLine("There are still to much time, ignore this case.");
+                    return;
+                }
+
+                // Collision predicted within the specified time threshold
+                Console.WriteLine("Collision predicted!");
+                Console.WriteLine($"Device 1 will reach collision point in: {timeToCollision1} seconds");
+                Console.WriteLine($"Device 2 will reach collision point in: {timeToCollision2} seconds");
+
+                // Calculate the predicted collision point
+                double collisionX = (a1 * c2 - a2 * c1) / (a2 * b1 - a1 * b2);
+                double collisionY = (b1 * c2 - b2 * c1) / (a1 * b2 - a2 * b1);
+
+                Console.WriteLine($"Collision point: ({collisionX}, {collisionY})");
+
+                Point3D? intersectionPoint = new Point3D(collisionX, collisionY, 0);
+
+                ///Distance from line 1 to intersection point
+                double distanceline1ToI = FindDistanceToSegment(line1, intersectionPoint);
+
+                ///Distance from line 2 to intersection point
+                double distanceline2ToI = FindDistanceToSegment(line2, intersectionPoint);
+
+                //Console.WriteLine($"Devices {d1.Imei} & {d2.Imei} will collide in {timeToCollision} seconds at a distance of {distanceToCollision} distance units.");
+                collisions.Add(new CollisionAtDistanceAfterTime { D1 = d1, D2 = d2, Distance1 = distanceline1ToI, Distance2 = distanceline2ToI, Time1 = timeToCollision1, Time2 = timeToCollision2 });
+            }
+
+
+        }
+
+        private static double CalculateDistance(Line line1, Line line2)
+        {
+            // Calculate the direction vector of each line
+            double line1DirectionX = line1.b;
+            double line1DirectionY = -line1.a;
+
+            double line2DirectionX = line2.b;
+            double line2DirectionY = -line2.a;
+
+            // Calculate the dot product of the direction vectors
+            double dotProduct = line1DirectionX * line2DirectionX + line1DirectionY * line2DirectionY;
+
+            // Check if the lines are parallel
+            if (Math.Abs(1 - Math.Abs(dotProduct)) < double.Epsilon)
+            {
+                // Lines are parallel, return 0 distance
+                return 0;
+            }
+
+            // Calculate the distance between the lines
+            double distance = Math.Abs(line1.c - dotProduct * line2.c) / Math.Sqrt(line1DirectionX * line1DirectionX + line1DirectionY * line1DirectionY);
+
+            return distance;
+        }
+        private static Point3D? WillIntersect(Line line1, Line line2)
+        {
+            double delta = (double)((line1.a * line2.b) - (line2.a * line1.b));
+
+            if (delta != 0)
+            {
+                double x = (double)(((line2.b * line1.c) - (line1.b * line2.c)) / delta);
+                double y = (double)((line1.a * line2.c) - (line2.a - line1.c)) / delta;
+                return new Point3D(x, y, 0);    //adjust later to get z also
+            }
+            return null;
+        }
+
+        private static double FindDistanceToSegment(Line line, Point3D point)
+        {
+            // Step 1: Calculate the direction vector of the line
+            double lineDirectionX = line.b;
+            double lineDirectionY = -line.a;
+            double lineDirectionZ = 0; // assuming the line is in the xy-plane
+
+            // Step 2: Calculate the normal vector of the line
+            double lineNormalX = line.a;
+            double lineNormalY = line.b;
+            double lineNormalZ = line.c;
+
+            // Step 3: Calculate the vector between a point on the line and the given point
+            double vectorX = point.X - lineDirectionX;
+            double vectorY = point.Y - lineDirectionY;
+            double vectorZ = point.Z - lineDirectionZ;
+
+            // Step 4: Use the dot product to find the projection of the vector onto the direction vector
+            double dotProduct = vectorX * lineDirectionX + vectorY * lineDirectionY + vectorZ * lineDirectionZ;
+            double directionMagnitudeSquared = lineDirectionX * lineDirectionX + lineDirectionY * lineDirectionY + lineDirectionZ * lineDirectionZ;
+            double projectionScalar = dotProduct / directionMagnitudeSquared;
+
+            // Step 5: Calculate the distance between the given point and the closest point on the line
+            double closestPointX = lineDirectionX * projectionScalar;
+            double closestPointY = lineDirectionY * projectionScalar;
+            double closestPointZ = lineDirectionZ * projectionScalar;
+
+            double distance = Math.Sqrt(Math.Pow(point.X - closestPointX, 2) + Math.Pow(point.Y - closestPointY, 2) + Math.Pow(point.Z - closestPointZ, 2));
+            return distance;
+        }
+        public static void CheckFor2DCollisionsV1Nested(GlobalConfig config, ILogger _logger, DeviceSegment d1, DeviceSegment d2, ref List<CollisionAtDistanceAfterTime> collisions)
         {
             //Gathering segments positions
             Vector2 d1Pos = new Vector2(d1.Segment.X, d1.Segment.Y);
@@ -30,12 +191,6 @@ namespace AccidentDetectionWorker
                 //Console.WriteLine($"Devices {d1.Imei} & {d2.Imei} will collide in {timeToCollision} seconds at a distance of {distanceToCollision} distance units.");
                 collisions.Add(new CollisionAtDistanceAfterTime { D1 = d1, D2 = d2, Distance = distanceToCollision, Time = timeToCollision });
             }
-            //else
-            //{
-            //    Console.WriteLine($"Devices {d1.Imei} & {d2.Imei} will not collide in the foreseeable future.");
-            //}
-
-
         }
         public static void CheckFor2DCollisionsV1(ILogger _logger, List<KeyValuePair<string, string>> devices, KeyValuePair<string, string> currentDevice, List<KeyValuePair<string, string>> collisions)
         {
@@ -313,7 +468,7 @@ namespace AccidentDetectionWorker
         {
             List<CollisionCheckCombination> combinations = new List<CollisionCheckCombination>();
 
-            for (int i=0;i<devices.Count -1;i++)
+            for (int i = 0; i < devices.Count - 1; i++)
             {
                 DeviceSegment S1 = DeviceSegment.FromKeyValuePair(devices[i]);
                 for (int j = i + 1; j < devices.Count; j++)
@@ -322,7 +477,7 @@ namespace AccidentDetectionWorker
 
                     if (!combinations.Where(comb => (comb.D1.Imei.Equals(S1.Imei) && comb.D2.Imei.Equals(S2.Imei)) || (comb.D2.Imei.Equals(S1.Imei) && comb.D1.Imei.Equals(S2.Imei))).Any())
                     {
-                        combinations.Add(new CollisionCheckCombination { D1= S1, D2 = S2 });
+                        combinations.Add(new CollisionCheckCombination { D1 = S1, D2 = S2 });
                     }
                 }
             }

@@ -16,7 +16,9 @@ namespace AccidentDetectionWorker.Models.Common
 
     public class CollisionAtDistanceAfterTime : CollisionCheckCombination
     {
-        public float Time { get; set; }
-        public float Distance { get; set; }
+        public double Time1 { get; set; }
+        public double Time2 { get; set; }
+        public double Distance1 { get; set; }
+        public double Distance2 { get; set; }
     }
 }

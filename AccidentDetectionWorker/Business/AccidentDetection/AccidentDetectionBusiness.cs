@@ -71,7 +71,11 @@ namespace AccidentDetectionWorker.Business.AccidentDetection
                     {
                         Task.Run(async () =>
                         {
-                            CollisionHelper.CheckFor2DCollisionsV1Nested(_globalConfig, _logger, comb.D1, comb.D2, ref collisions);
+                            //Old way
+                            //CollisionHelper.CheckFor2DCollisionsV1Nested(_globalConfig, _logger, comb.D1, comb.D2, ref collisions);
+
+                            //New way
+                            CollisionHelper.CheckFor2DCollisionsV2Nested(_globalConfig, _logger, comb.D1, comb.D2, ref collisions);
                         });
                     });
                 }
@@ -86,7 +90,7 @@ namespace AccidentDetectionWorker.Business.AccidentDetection
                     {
                         Task.Run(async () =>
                         {
-                            string payload = $"{coll.Distance}|{coll.D1.Imei}:{coll.D2.Imei}";
+                            string payload = $"{coll.D1.Imei}:{coll.Distance1}:{coll.Time1}|{coll.D2.Imei}:{coll.Distance2}:{coll.Time2}";
                             await ConnectMQTTAndPublish(_globalConfig.MqttConfig, _mqttService, payload);
                         });
                     });

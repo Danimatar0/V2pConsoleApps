@@ -21,6 +21,14 @@ namespace Helpers.Models
             equation = b < 0 ? $"{a}x - {b}y = {c}" : $"{a}x + {b}y = {c}";
         }
 
+        public Line(double a, double b, double c)
+        {
+            this.a = a;
+            this.b = b;
+            this.c = c;
+            equation = b < 0 ? $"{a}x - {b}y = {c}" : $"{a}x + {b}y = {c}";
+        }
+
         public string ToString()
         {
             return $"{a},{b},{c}";
@@ -42,6 +50,11 @@ namespace Helpers.Models
             X = x;
             Y = y;
             Z = z;
+        }
+
+        public string ToString()
+        {
+            return $"[{X},{Y},{Z}]";
         }
     }
 }
