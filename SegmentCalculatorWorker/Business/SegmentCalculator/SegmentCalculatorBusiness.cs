@@ -183,7 +183,7 @@ namespace SegmentCalculatorWorker.Business.SegmentCalculator
 
         public static string GetSegmentCoordinates(List<float> point1, List<float> point2)
         {
-            var difference = point2.Select((x, i) => point2[i] - point1[i]).ToList();
+            //var difference = point2.Select((x, i) => point2[i] - point1[i]).ToList();
 
             // Calculate the length of the segment.
             float length = Vector3.Distance(new Vector3(point1[0], point1[1], point1[2]), new Vector3(point2[0], point2[1], point2[2]));
